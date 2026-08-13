@@ -41,6 +41,9 @@
   .ctrl label{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;margin-bottom:9px;color:var(--txt);font-weight:500}
   .ctrl label .v{color:var(--accent2);font-weight:700;font-variant-numeric:tabular-nums;font-size:14px}
   .hint{font-size:11px;color:var(--dim);margin-top:7px;line-height:1.5}
+  .split{margin-top:9px;font-size:11.5px;line-height:1.6;color:var(--mut);background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+  .split b{color:var(--txt);font-weight:700}
+  .split .s{color:var(--good)} .split .tr{color:var(--warn)}
   input[type=range]{width:100%;height:5px;-webkit-appearance:none;appearance:none;background:var(--line);border-radius:5px;outline:none;cursor:pointer}
   input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:17px;height:17px;border-radius:50%;background:var(--accent);border:3px solid #0a0c12;box-shadow:0 0 0 1px var(--accent)}
   input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;background:var(--accent);border:3px solid #0a0c12}
@@ -114,11 +117,13 @@
           <button data-m="fixed" onclick="setModel('fixed')">Fixed issuance</button>
         </div>
         <div class="hint">Dynamic = today's 5% reward-curve. Fixed = Polkadot-style constant %/yr (auto-decays).</div>
+        <div class="split" id="splitHint"></div>
       </div>
 
       <div class="ctrl" id="rateCtrl">
         <label>Fixed issuance rate <span class="v"><span id="rateV"></span>%/yr</span></label>
         <input type="range" id="rate" min="0" max="6" step="0.1" value="4">
+        <div class="hint" id="stakerHint"></div>
       </div>
 
       <div class="ctrl">
@@ -269,8 +274,15 @@ function render(){
 
   $('k_total').textContent=fmt(r.total)+' '; $('k_total').insertAdjacentHTML('beforeend','<span style="font-size:13px;color:var(--dim)">AVAIL</span>');
   $('k_total_sub').textContent=`${usd(r.total,p)}/day · ${usdY(r.total,p)}/yr`;
+  const stakerRate = r.stakerPool*C.ERAS_PER_YEAR/C.ISSUANCE*100;
+  const treasRate  = r.treasury*C.ERAS_PER_YEAR/C.ISSUANCE*100;
   $('k_infl').textContent=r.effInfl.toFixed(2)+'%';
-  $('k_infl_sub').textContent=model==='fixed'?'fixed → auto-decays':'dynamic curve (flat)';
+  $('k_infl_sub').innerHTML=`→ <b style="color:var(--good)">${stakerRate.toFixed(2)}%</b> to stakers · ${model==='fixed'?'auto-decays':'flat'}`;
+  // split readout under model toggle (both models, apples-to-apples)
+  $('splitHint').innerHTML = `Total minted <b>${r.effInfl.toFixed(2)}%</b> = <span class="tr">${treasRate.toFixed(2)}% Treasury</span> + <span class="s">${stakerRate.toFixed(2)}% to stakers</span>`;
+  // staker readout under the fixed-rate slider
+  if(model==='fixed'){ $('stakerHint').innerHTML = `The rate is the <b>all-in total</b>; after ${(s.treas*100).toFixed(0)}% Treasury, stakers get <b>${stakerRate.toFixed(2)}%</b>.`; }
+  else { $('stakerHint').innerHTML = `Curve gives stakers <b>${stakerRate.toFixed(2)}%</b>; Treasury is minted on top (total ${r.effInfl.toFixed(2)}%).`; }
   $('k_op').textContent='$'+fmt(r.perOpMonth,0)+'/mo';
   $('k_op_sub').textContent=`${fmt(r.perOpDay)} AVAIL/day = ${usd(r.perOpDay,p)}`;
   $('k_valall').textContent=fmt(r.opTotal)+' ';$('k_valall').insertAdjacentHTML('beforeend','<span style="font-size:13px;color:var(--dim)">AVAIL</span>');
