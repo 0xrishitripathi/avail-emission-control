@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Avail Emission Control</title>
+<script src="chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0a0c12; --bg2:#0d1017; --panel:#12161f; --panel2:#181d29; --line:#232a3a;
+    --txt:#eef2f8; --mut:#8a95ab; --dim:#5d6880;
+    --accent:#4c9dff; --accent2:#6ea8ff; --good:#2dd48a; --bad:#ff6b6b; --warn:#ffbf47; --purple:#a68bff;
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:radial-gradient(1200px 600px at 70% -10%,#141b2b 0%,var(--bg) 55%);color:var(--txt);
+    font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  header{padding:22px 30px;border-bottom:1px solid var(--line);background:rgba(10,12,18,.6);backdrop-filter:blur(8px)}
+  header h1{margin:0;font-size:19px;font-weight:700;letter-spacing:.2px;display:flex;align-items:center;gap:10px}
+  header p{margin:5px 0 0;color:var(--mut);font-size:13px}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--good);box-shadow:0 0 0 4px rgba(45,212,138,.15)}
+  .wrap{max-width:1560px;margin:0 auto;padding:22px 30px 70px}
+
+  .facts{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 20px}
+  .fact{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:7px 12px;font-size:12px;color:var(--dim)}
+  .fact b{color:var(--txt);font-weight:600}
+
+  .presets{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:22px;align-items:center}
+  .presets .lbl{color:var(--mut);font-size:12px;margin-right:2px;font-weight:600}
+  .presets button{background:var(--panel2);color:var(--txt);border:1px solid var(--line);padding:9px 15px;border-radius:9px;cursor:pointer;font-size:13px;font-weight:600;transition:.15s}
+  .presets button:hover{border-color:var(--accent);background:#1c2536;transform:translateY(-1px)}
+  .presets button.danger:hover{border-color:var(--bad);background:#241820}
+
+  .grid{display:grid;grid-template-columns:330px 1fr;gap:20px;align-items:start}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px}
+  .card h3{margin:0 0 18px;font-size:12px;text-transform:uppercase;letter-spacing:.8px;color:var(--mut);font-weight:700}
+
+  .ctrl{margin-bottom:20px}
+  .ctrl:last-child{margin-bottom:0}
+  .ctrl label{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;margin-bottom:9px;color:var(--txt);font-weight:500}
+  .ctrl label .v{color:var(--accent2);font-weight:700;font-variant-numeric:tabular-nums;font-size:14px}
+  .hint{font-size:11px;color:var(--dim);margin-top:7px;line-height:1.5}
+  input[type=range]{width:100%;height:5px;-webkit-appearance:none;appearance:none;background:var(--line);border-radius:5px;outline:none;cursor:pointer}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:17px;height:17px;border-radius:50%;background:var(--accent);border:3px solid #0a0c12;box-shadow:0 0 0 1px var(--accent)}
+  input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;background:var(--accent);border:3px solid #0a0c12}
+  input[type=range]:disabled{opacity:.35;cursor:not-allowed}
+  .seg{display:flex;gap:7px}
+  .seg button{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--mut);padding:9px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;transition:.15s}
+  .seg button.on{background:var(--accent);border-color:var(--accent);color:#04121f}
+  .num{display:flex;align-items:center;gap:8px;color:var(--mut)}
+  .num input{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:8px;padding:9px 11px;font-size:14px;font-weight:600}
+
+  .status{padding:14px 18px;border-radius:12px;font-weight:600;margin-bottom:18px;font-size:14px;display:flex;align-items:center;gap:10px}
+  .status .badge{font-size:11px;font-weight:800;letter-spacing:.5px;padding:3px 9px;border-radius:20px;text-transform:uppercase}
+  .status.good{background:rgba(45,212,138,.10);border:1px solid rgba(45,212,138,.4);color:#9af5cd}
+  .status.good .badge{background:var(--good);color:#04231a}
+  .status.bad{background:rgba(255,107,107,.10);border:1px solid rgba(255,107,107,.4);color:#ffc2c2}
+  .status.bad .badge{background:var(--bad);color:#2a0b0b}
+
+  .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:13px;margin-bottom:18px}
+  .kpi{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:12px;padding:15px 16px}
+  .kpi .t{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);font-weight:600}
+  .kpi .big{font-size:23px;font-weight:800;margin-top:6px;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+  .kpi .sub{font-size:12px;color:var(--dim);margin-top:3px;font-variant-numeric:tabular-nums}
+  .kpi.hl{border-color:rgba(76,157,255,.5);box-shadow:inset 0 0 0 1px rgba(76,157,255,.12)}
+  .kpi.op .big{color:var(--good)} .kpi.op.bad .big{color:var(--bad)}
+
+  .charts{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+  .chartbox{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+  .chartbox h4{margin:0 0 4px;font-size:14px;font-weight:700;color:var(--txt)}
+  .chartbox .hint{margin:0 0 12px}
+  .cwrap{position:relative;height:240px}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px}
+  th,td{text-align:right;padding:10px 10px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+  th:first-child,td:first-child{text-align:left;color:var(--txt)}
+  tbody td:first-child{color:var(--mut)}
+  th{color:var(--dim);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.4px}
+  tr:last-child td{border-bottom:none}
+  .pos{color:var(--good);font-weight:700} .neg{color:var(--bad);font-weight:700}
+  .note{color:var(--dim);font-size:12px;margin-top:16px;line-height:1.7}
+  .pill{display:inline-flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line);border-radius:20px;padding:3px 11px;font-size:11px;color:var(--mut);font-weight:600}
+  @media(max-width:1050px){.grid{grid-template-columns:1fr}.charts{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<header>
+  <h1><span class="dot"></span> Avail Emission Control <span class="pill">interactive model · demo</span></h1>
+  <p>Tune the levers of Avail's validator economics — everything recomputes instantly. Baseline figures measured on-chain (Avail mainnet, era 768) and from the runtime.</p>
+</header>
+
+<div class="wrap">
+  <div class="facts" id="facts"></div>
+
+  <div class="presets">
+    <span class="lbl">Scenarios</span>
+    <button onclick="preset('today')">Today (status quo)</button>
+    <button onclick="preset('recommended')">Recommended</button>
+    <button onclick="preset('aggressive')">Aggressive cut</button>
+    <button onclick="preset('fixedreward')">Deep cut + fixed reward</button>
+    <button class="danger" onclick="preset('stop')">Stop inflation</button>
+  </div>
+
+  <div class="grid">
+    <!-- CONTROLS -->
+    <div class="card">
+      <h3>Levers</h3>
+
+      <div class="ctrl">
+        <label>Emission model</label>
+        <div class="seg" id="segModel">
+          <button data-m="dynamic" onclick="setModel('dynamic')">Dynamic curve</button>
+          <button data-m="fixed" onclick="setModel('fixed')">Fixed issuance</button>
+        </div>
+        <div class="hint">Dynamic = today's 5% reward-curve. Fixed = Polkadot-style constant %/yr (auto-decays).</div>
+      </div>
+
+      <div class="ctrl" id="rateCtrl">
+        <label>Fixed issuance rate <span class="v"><span id="rateV"></span>%/yr</span></label>
+        <input type="range" id="rate" min="0" max="6" step="0.1" value="4">
+      </div>
+
+      <div class="ctrl">
+        <label>Active validators <span class="v" id="valsV"></span></label>
+        <input type="range" id="vals" min="10" max="130" step="1" value="50">
+      </div>
+
+      <div class="ctrl">
+        <label>Commission <span class="v"><span id="commV"></span>%</span></label>
+        <input type="range" id="comm" min="0" max="20" step="0.5" value="20">
+        <div class="hint">Capped at 20% per AIP-8 policy.</div>
+      </div>
+
+      <div class="ctrl">
+        <label>To Treasury <span class="v"><span id="treasV"></span>%</span></label>
+        <input type="range" id="treas" min="0" max="30" step="1" value="15">
+      </div>
+
+      <div class="ctrl">
+        <label>Fixed reward / validator <span class="v"><span id="fixV"></span></span></label>
+        <input type="range" id="fix" min="0" max="6000" step="100" value="0">
+        <div class="hint">Escape hatch — a flat per-validator payment (runtime change) that protects operators when the pool shrinks. In AVAIL/era.</div>
+      </div>
+
+      <div class="ctrl">
+        <label>AVAIL price <span class="v">$<span id="priceV"></span></span></label>
+        <input type="range" id="price" min="0.001" max="0.02" step="0.0001" value="0.00272">
+      </div>
+
+      <div class="ctrl">
+        <label>Server cost / validator / month</label>
+        <div class="num">$ <input type="number" id="cost" value="350" min="0" step="10"></div>
+      </div>
+    </div>
+
+    <!-- OUTPUTS -->
+    <div>
+      <div id="status" class="status"></div>
+
+      <div class="kpis">
+        <div class="kpi hl"><div class="t">Total minted / day</div><div class="big" id="k_total"></div><div class="sub" id="k_total_sub"></div></div>
+        <div class="kpi"><div class="t">Effective inflation</div><div class="big" id="k_infl"></div><div class="sub" id="k_infl_sub"></div></div>
+        <div class="kpi op hl" id="kpiOp"><div class="t">Per-operator income</div><div class="big" id="k_op"></div><div class="sub" id="k_op_sub"></div></div>
+        <div class="kpi"><div class="t">All validators earn</div><div class="big" id="k_valall"></div><div class="sub" id="k_valall_sub"></div></div>
+        <div class="kpi"><div class="t">Foundation earns (nominator)</div><div class="big" id="k_found"></div><div class="sub" id="k_found_sub"></div></div>
+        <div class="kpi"><div class="t">True external cost / yr</div><div class="big" id="k_ext"></div><div class="sub" id="k_ext_sub"></div></div>
+      </div>
+
+      <div class="charts">
+        <div class="chartbox">
+          <h4>Where the daily emission goes</h4>
+          <p class="hint">Operators keep only their commission; most flows to nominators (~74% Foundation) and Treasury.</p>
+          <div class="cwrap"><canvas id="pie"></canvas></div>
+        </div>
+        <div class="chartbox">
+          <h4>Per-operator income vs AVAIL price</h4>
+          <p class="hint">Red dashed line = server cost. The dot marks your current price.</p>
+          <div class="cwrap"><canvas id="linePrice"></canvas></div>
+        </div>
+        <div class="chartbox">
+          <h4>Effective inflation over 10 years</h4>
+          <p class="hint">Fixed issuance auto-decays as supply grows; the dynamic curve stays flat.</p>
+          <div class="cwrap"><canvas id="lineInfl"></canvas></div>
+        </div>
+        <div class="chartbox">
+          <h4>Total emission vs today</h4>
+          <p class="hint">Your scenario compared with the current 1.52M AVAIL/day.</p>
+          <div class="cwrap"><canvas id="barCmp"></canvas></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <h3>Full breakdown vs today</h3>
+        <table id="tbl"></table>
+        <p class="note" id="notes"></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---------- Measured constants (Avail mainnet era 768 + runtime) ----------
+const C = {
+  ISSUANCE: 11.09e9, STAKED: 4.69e9, STAKING_RATIO: 0.4227, ERAS_PER_YEAR: 365.25,
+  curve: {min:0.01, max:0.05, ideal:0.50, falloff:0.05},
+  FOUND_FRAC: 0.744, FEES_VAL_PER_DAY: 126,
+  BASE_VALS: 80, BASE_STAKER_POOL: 1329462, BASE_TOTAL: 1519178, BASE_OP_TOTAL: 224579,
+  BASE_FOUND: 822034, BASE_TREAS: 189716, BASE_RETAIL: 1104884*(1-0.744)
+};
+const $ = id => document.getElementById(id);
+const fmt = (n,d=0) => Number(n).toLocaleString('en-US',{maximumFractionDigits:d});
+const usd = (a,p) => '$'+fmt(a*p,2);
+const usdY = (a,p) => '$'+fmt(a*p*C.ERAS_PER_YEAR,0);
+const mo = (a,p) => a*p*30.44;
+const r1 = n => Math.round(n*10)/10;   // kill float noise on axes
+
+function inflation(x,c){
+  if(x<=c.ideal) return c.min + x*(c.max-c.min)/c.ideal;
+  return c.min + (c.max-c.min)*Math.pow(2,(c.ideal-x)/c.falloff);
+}
+
+let model = 'fixed';
+function setModel(m){ model=m; document.querySelectorAll('#segModel button').forEach(b=>b.classList.toggle('on',b.dataset.m===m)); $('rate').disabled=(m!=='fixed'); render(); }
+
+function state(){ return {
+  rate:+$('rate').value, vals:+$('vals').value, comm:+$('comm').value/100,
+  treas:+$('treas').value/100, fix:+$('fix').value, price:+$('price').value, cost:+$('cost').value
+};}
+
+function compute(s, priceOverride){
+  const price = priceOverride ?? s.price;
+  let total, stakerPool, treasury;
+  if(model==='dynamic'){
+    const stakerRate = inflation(C.STAKING_RATIO, C.curve);
+    total = C.curve.max*C.ISSUANCE/C.ERAS_PER_YEAR;
+    stakerPool = stakerRate*C.ISSUANCE/C.ERAS_PER_YEAR;
+    treasury = total - stakerPool;
+  } else {
+    total = (s.rate/100)*C.ISSUANCE/C.ERAS_PER_YEAR;
+    treasury = total*s.treas;
+    stakerPool = total - treasury;
+  }
+  const fixedTotal = Math.min(s.fix*s.vals, stakerPool);
+  const remaining = stakerPool - fixedTotal;
+  const opCommission = s.comm*remaining;
+  const opTotal = fixedTotal + opCommission + C.FEES_VAL_PER_DAY;
+  const nomTotal = Math.max(0, stakerPool - fixedTotal - opCommission);
+  const foundNom = nomTotal*C.FOUND_FRAC, retailNom = nomTotal - foundNom;
+  const perOpDay = opTotal/s.vals, perOpMonth = mo(perOpDay, price);
+  const effInfl = total*C.ERAS_PER_YEAR/C.ISSUANCE*100;
+  return {total,stakerPool,treasury,opTotal,opCommission,fixedTotal,nomTotal,foundNom,retailNom,perOpDay,perOpMonth,effInfl,price};
+}
+
+const axG='#8a95ab', grid='rgba(35,42,58,.7)';
+let pie,lp,li,bc;
+function render(){
+  const s = state(), p = s.price;
+  $('rateV').textContent=s.rate.toFixed(1); $('valsV').textContent=s.vals;
+  $('commV').textContent=(s.comm*100).toFixed(1); $('treasV').textContent=(s.treas*100).toFixed(0);
+  $('fixV').textContent=fmt(s.fix)+' AVAIL/era'; $('priceV').textContent=s.price.toFixed(5);
+  $('rateCtrl').style.opacity = model==='dynamic'?0.4:1;
+
+  const r = compute(s);
+
+  const st=$('status');
+  if(r.perOpMonth>=s.cost){ st.className='status good'; st.innerHTML=`<span class="badge">Profitable</span> Operators earn <b>$${fmt(r.perOpMonth,0)}/mo</b> vs $${fmt(s.cost,0)} cost — <b>+$${fmt(r.perOpMonth-s.cost,0)}/mo margin</b>. Total emission ${usd(r.total,p)}/day.`; $('kpiOp').classList.remove('bad'); }
+  else { st.className='status bad'; st.innerHTML=`<span class="badge">Unprofitable</span> Operators earn <b>$${fmt(r.perOpMonth,0)}/mo</b> vs $${fmt(s.cost,0)} cost — <b>-$${fmt(s.cost-r.perOpMonth,0)}/mo</b>. Validators would leave; security at risk.`; $('kpiOp').classList.add('bad'); }
+
+  $('k_total').textContent=fmt(r.total)+' '; $('k_total').insertAdjacentHTML('beforeend','<span style="font-size:13px;color:var(--dim)">AVAIL</span>');
+  $('k_total_sub').textContent=`${usd(r.total,p)}/day · ${usdY(r.total,p)}/yr`;
+  $('k_infl').textContent=r.effInfl.toFixed(2)+'%';
+  $('k_infl_sub').textContent=model==='fixed'?'fixed → auto-decays':'dynamic curve (flat)';
+  $('k_op').textContent='$'+fmt(r.perOpMonth,0)+'/mo';
+  $('k_op_sub').textContent=`${fmt(r.perOpDay)} AVAIL/day = ${usd(r.perOpDay,p)}`;
+  $('k_valall').textContent=fmt(r.opTotal)+' ';$('k_valall').insertAdjacentHTML('beforeend','<span style="font-size:13px;color:var(--dim)">AVAIL</span>');
+  $('k_valall_sub').textContent=`${usdY(r.opTotal,p)}/yr · ${s.vals} validators`;
+  $('k_found').textContent=fmt(r.foundNom)+' ';$('k_found').insertAdjacentHTML('beforeend','<span style="font-size:13px;color:var(--dim)">AVAIL</span>');
+  $('k_found_sub').textContent=`${usdY(r.foundNom,p)}/yr (recycled to Foundation)`;
+  const ext=r.opTotal+r.retailNom;
+  $('k_ext').textContent=usdY(ext,p);
+  $('k_ext_sub').textContent=`operators + retail nominators`;
+
+  // pie
+  const pd=[r.opTotal,r.foundNom,r.retailNom,r.treasury];
+  const pl=['Operators','Foundation (nominator)','Retail nominators','Treasury'];
+  const pc=['#4c9dff','#a68bff','#2dd48a','#ffbf47'];
+  if(!pie){ pie=new Chart($('pie'),{type:'doughnut',data:{labels:pl,datasets:[{data:pd,backgroundColor:pc,borderColor:'#12161f',borderWidth:3,hoverOffset:6}]},
+    options:{maintainAspectRatio:false,cutout:'62%',plugins:{legend:{position:'right',labels:{color:'#eef2f8',boxWidth:11,boxHeight:11,usePointStyle:true,pointStyle:'circle',font:{size:11},padding:10}},
+      tooltip:{callbacks:{label:c=>` ${c.label}: ${fmt(c.raw)} AVAIL/day`}}}}}); }
+  else { pie.data.datasets[0].data=pd; pie.update('none'); }
+
+  // op income vs price
+  const xs=[],ys=[]; for(let pr=0.001;pr<=0.012001;pr+=0.0005){ xs.push('$'+pr.toFixed(4)); ys.push(mo(compute(s,pr).perOpDay,pr)); }
+  const costLine=xs.map(()=>s.cost);
+  const dotIdx=Math.max(0,Math.min(xs.length-1,Math.round((p-0.001)/0.0005)));
+  const dotData=xs.map((_,i)=>i===dotIdx?mo(compute(s,0.001+dotIdx*0.0005).perOpDay,0.001+dotIdx*0.0005):null);
+  if(!lp){ lp=new Chart($('linePrice'),{type:'line',data:{labels:xs,datasets:[
+      {label:'Operator $/mo',data:ys,borderColor:'#4c9dff',backgroundColor:'rgba(76,157,255,.14)',fill:true,tension:.35,pointRadius:0,borderWidth:2},
+      {label:'Server cost',data:costLine,borderColor:'#ff6b6b',borderDash:[6,4],pointRadius:0,borderWidth:1.5,fill:false},
+      {label:'Current price',data:dotData,borderColor:'#fff',backgroundColor:'#fff',pointRadius:5,pointHoverRadius:6,showLine:false}
+    ]},options:{maintainAspectRatio:false,scales:{x:{grid:{color:grid},ticks:{color:axG,maxTicksLimit:7,font:{size:10}}},y:{grid:{color:grid},ticks:{color:axG,callback:v=>'$'+fmt(v),font:{size:11}}}},
+      plugins:{legend:{labels:{color:'#eef2f8',usePointStyle:true,pointStyle:'line',font:{size:11},filter:i=>i.text!=='Current price'}},tooltip:{callbacks:{label:c=>c.datasetIndex===0?` Operator: $${fmt(c.raw,0)}/mo`:` Cost: $${fmt(c.raw,0)}/mo`}}}}}); }
+  else { lp.data.labels=xs; lp.data.datasets[0].data=ys; lp.data.datasets[1].data=costLine; lp.data.datasets[2].data=dotData; lp.update('none'); }
+
+  // inflation decay  (rounded to kill float noise)
+  const yrs=[],infl=[]; let ti=C.ISSUANCE; const yearly=r.total*C.ERAS_PER_YEAR;
+  for(let y=0;y<=10;y++){ yrs.push('Yr '+y); infl.push(r1(model==='fixed'?100*yearly/ti:r.effInfl)); ti+=yearly; }
+  if(!li){ li=new Chart($('lineInfl'),{type:'line',data:{labels:yrs,datasets:[{label:'Effective inflation',data:infl,borderColor:'#a68bff',backgroundColor:'rgba(166,139,255,.14)',fill:true,tension:.35,pointRadius:3,pointBackgroundColor:'#a68bff',borderWidth:2}]},
+    options:{maintainAspectRatio:false,scales:{x:{grid:{color:grid},ticks:{color:axG,font:{size:11}}},y:{grid:{color:grid},ticks:{color:axG,callback:v=>v.toFixed(1)+'%',font:{size:11}}}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.raw.toFixed(2)}% inflation`}}}}}); }
+  else { li.data.datasets[0].data=infl; li.update('none'); }
+
+  // bar compare
+  if(!bc){ bc=new Chart($('barCmp'),{type:'bar',data:{labels:['Today','Your scenario'],datasets:[{label:'AVAIL minted/day',data:[C.BASE_TOTAL,r.total],backgroundColor:['#48546f','#4c9dff'],borderRadius:6,barPercentage:.6}]},
+    options:{maintainAspectRatio:false,scales:{x:{grid:{display:false},ticks:{color:axG,font:{size:12}}},y:{grid:{color:grid},ticks:{color:axG,callback:v=>fmt(v/1000)+'K',font:{size:11}}}},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${fmt(c.raw)} AVAIL/day`}}}}}); }
+  else { bc.data.datasets[0].data=[C.BASE_TOTAL,r.total]; bc.update('none'); }
+
+  // table
+  const cutPct=(1-r.total/C.BASE_TOTAL)*100;
+  const baseOpMo=mo(C.BASE_OP_TOTAL/C.BASE_VALS,p);
+  const ext0=C.BASE_OP_TOTAL+C.BASE_RETAIL;
+  $('tbl').innerHTML=`
+    <tr><th>Metric</th><th>Today (5%, 80)</th><th>Scenario</th><th>Δ</th></tr>
+    <tr><td>Total minted / day</td><td>${fmt(C.BASE_TOTAL)}</td><td>${fmt(r.total)}</td><td class="${cutPct>=0?'pos':'neg'}">${cutPct>=0?'−':'+'}${Math.abs(cutPct).toFixed(0)}%</td></tr>
+    <tr><td>Total minted / year</td><td>${usdY(C.BASE_TOTAL,p)}</td><td>${usdY(r.total,p)}</td><td></td></tr>
+    <tr><td>Effective inflation</td><td>5.00%</td><td>${r.effInfl.toFixed(2)}%</td><td></td></tr>
+    <tr><td>Per-operator / month</td><td>$${fmt(baseOpMo,0)}</td><td>$${fmt(r.perOpMonth,0)}</td><td class="${r.perOpMonth>=baseOpMo?'pos':'neg'}">${r.perOpMonth>=baseOpMo?'+':'−'}$${fmt(Math.abs(r.perOpMonth-baseOpMo),0)}</td></tr>
+    <tr><td>All validators / year</td><td>${usdY(C.BASE_OP_TOTAL,p)}</td><td>${usdY(r.opTotal,p)}</td><td></td></tr>
+    <tr><td>Foundation (nominator) / year</td><td>${usdY(C.BASE_FOUND,p)}</td><td>${usdY(r.foundNom,p)}</td><td></td></tr>
+    <tr><td>Treasury / year</td><td>${usdY(C.BASE_TREAS,p)}</td><td>${usdY(r.treasury,p)}</td><td></td></tr>
+    <tr><td>True external cost / year</td><td>${usdY(ext0,p)}</td><td>${usdY(ext,p)}</td><td></td></tr>`;
+
+  $('notes').innerHTML=`Model: <b>${model==='fixed'?'Fixed issuance':'Dynamic reward curve'}</b>. `+
+    `“True external cost” = operators + retail nominators (tokens that leave Foundation control). `+
+    `Validator fee revenue ≈ ${C.FEES_VAL_PER_DAY} AVAIL/day (${usd(C.FEES_VAL_PER_DAY,p)}) — negligible, so inflation is ~100% of validator income today.`;
+}
+
+function preset(name){
+  const set=(id,v)=>{$(id).value=v;};
+  if(name==='today'){ setModel('dynamic'); set('vals',80); set('comm',16.9); set('treas',12); set('fix',0); set('price',0.00272); set('cost',350); }
+  if(name==='recommended'){ setModel('fixed'); set('rate',4.0); set('vals',50); set('comm',20); set('treas',15); set('fix',0); set('price',0.00272); set('cost',350); }
+  if(name==='aggressive'){ setModel('fixed'); set('rate',2.5); set('vals',50); set('comm',20); set('treas',15); set('fix',0); set('price',0.00272); set('cost',350); }
+  if(name==='fixedreward'){ setModel('fixed'); set('rate',2.0); set('vals',50); set('comm',20); set('treas',15); set('fix',3800); set('price',0.00272); set('cost',350); }
+  if(name==='stop'){ setModel('fixed'); set('rate',0); set('vals',50); set('comm',20); set('treas',0); set('fix',0); set('price',0.00272); set('cost',350); }
+  render();
+}
+
+$('facts').innerHTML=[
+  ['Total issuance','11.09B AVAIL'],['Total staked','4.69B (42.3%)'],['Active validators','80'],
+  ['Era length','24h = 1 day'],['Reward curve','min 1% · max 5% · ideal 50%'],
+  ['Staker pool today','1.33M AVAIL/day'],['Self-bond','0.48% of stake'],
+  ['Foundation share of noms','~74%'],['Fee split','20% author · 80% treasury'],
+  ['Fees to validators','~126 AVAIL/day (~$0.34)']
+].map(([k,v])=>`<div class="fact">${k}: <b>${v}</b></div>`).join('');
+
+document.querySelectorAll('input').forEach(el=>el.addEventListener('input',render));
+preset('recommended');
+</script>
+</body>
+</html>
